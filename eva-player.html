@@ -253,9 +253,41 @@ function startListening(){
   });
 
   // Blocks — live updates
+  let _prevBlocksSnapshot = '';
   onValue(ref(db,'blocks'), snap=>{
     const data = snap.val()||{};
-    blocks = Object.entries(data).map(([id,b])=>({...b,id})).sort((a,b)=>a.order-b.order);
+    const newBlocks = Object.entries(data).map(([id,b])=>({...b,id})).sort((a,b)=>a.order-b.order);
+    const newSnapshot = JSON.stringify(newBlocks.map(b=>({id:b.id,status:b.status})));
+
+    // Detect status changes
+    if(_prevBlocksSnapshot && newSnapshot !== _prevBlocksSnapshot){
+      const oldBlocks = blocks;
+      const justClosed = newBlocks.find(nb=>{ const ob=oldBlocks.find(b=>b.id===nb.id); return ob&&ob.status!=='done'&&nb.status==='done'; });
+      const justOpened = newBlocks.find(nb=>{ const ob=oldBlocks.find(b=>b.id===nb.id); return ob&&ob.status!=='open'&&nb.status==='open'; });
+      const justLive   = newBlocks.find(nb=>{ const ob=oldBlocks.find(b=>b.id===nb.id); return ob&&ob.status!=='live'&&nb.status==='live'; });
+
+      if(justClosed || justOpened || justLive){
+        // Vždy přepni na záložku Program a zobraz hlavní obrazovku
+        showScreen('scr-main');
+        switchTab('program');
+        setTimeout(()=>{
+          const activeEl = document.querySelector('.block-item.active-block');
+          if(activeEl) activeEl.scrollIntoView({behavior:'smooth', block:'center'});
+        }, 200);
+        if(justOpened && participant && !participant.rated?.[justOpened.id]){
+          toast('● ' + justOpened.title + ' — hodnoťte nyní', 4000);
+        }
+        if(justClosed){
+          const next = newBlocks.find(b=>b.status==='open');
+          if(next && participant && !participant.rated?.[next.id]){
+            toast('Hodnocení otevřeno: ' + next.title, 4000);
+          }
+        }
+      }
+    }
+
+    _prevBlocksSnapshot = newSnapshot;
+    blocks = newBlocks;
     renderBlocks();
     checkAdminCommands();
   });
