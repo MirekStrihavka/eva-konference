@@ -257,8 +257,8 @@ function updateScreen(){
   const cur=sb.find(b=>b.status==='open'||b.status==='live');
   const next=sb.find(b=>b.status==='next'&&!BREAKS.includes(b.type));
 
-  if(cur && currentMode!=='questions'){
-    // Live mode
+  if(cur){
+    // Aktivní blok vždy přebíjí questions mód
     document.getElementById('live-type').textContent=cur.type||'Přednáška';
     document.getElementById('live-title').textContent=cur.title||'';
     document.getElementById('live-speaker').textContent=cur.speaker||'';
@@ -267,7 +267,7 @@ function updateScreen(){
     updateLiveRatings();
     if(currentMode!=='live') showMode('live');
   } else if(currentMode!=='questions'){
-    // Lobby mode
+    // Lobby mode — jen pokud nejsme v questions
     if(next){
       document.getElementById('lobby-next-block').style.display='block';
       document.getElementById('next-time').textContent=next.start||'';
