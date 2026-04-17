@@ -303,7 +303,7 @@ function renderRating(blockId){
     <div style="padding-top:12px;border-top:1px solid var(--border);margin-top:4px">
       <div class="sec-lbl">Investiční záměr</div>
       <div class="fl"><label class="lbl">Uvažuji o koupi</label><div class="stars" id="st-buy" data-v="0"></div></div>
-      <div class="fl"><label class="lbl">Kdy?</label><div class="chips" id="ch-when"><div class="chip" onclick="one(this,'ch-when')">Ihned</div><div class="chip" onclick="one(this,'ch-when')">Do 3 měsíců</div><div class="chip" onclick="one(this,'ch-when')">Do roka</div><div class="chip" onclick="one(this,'ch-when')">Zatím ne</div></div></div>
+      <div class="fl"><label class="lbl">Kdy?</label><div class="chips" id="ch-when"><div class="chip" onclick="one(this,'ch-when')">Ihned</div><div class="chip" onclick="one(this,'ch-when')">Do 3 měsíců</div><div class="chip" onclick="one(this,'ch-when')">Do 6 měsíců</div><div class="chip" onclick="one(this,'ch-when')">Později</div></div></div>
       <div class="fl"><label class="lbl">Objem (USDC) — nepovinné</label><input type="text" id="inp-usd" placeholder="Např. 5000"></div>
     </div>`:""}
     <div class="fl" style="margin-top:4px"><label class="lbl">Otázka / vzkaz pro řečníka — nepovinné</label><textarea id="inp-q" placeholder="Vaše otázka…"></textarea></div>
@@ -439,10 +439,10 @@ function renderFinal(){
     </div>
     <div class="fl"><label class="lbl">Investiční horizont</label>
       <div class="chips" id="ch-hor">
+        <div class="chip" onclick="one(this,'ch-hor')">Ihned</div>
+        <div class="chip" onclick="one(this,'ch-hor')">Do 3 měsíců</div>
         <div class="chip" onclick="one(this,'ch-hor')">Do 6 měsíců</div>
-        <div class="chip" onclick="one(this,'ch-hor')">6–12 měsíců</div>
-        <div class="chip" onclick="one(this,'ch-hor')">Příští rok+</div>
-        <div class="chip" onclick="one(this,'ch-hor')">Zatím jen sleduji</div>
+        <div class="chip" onclick="one(this,'ch-hor')">Později</div>
       </div>
     </div>
     <div class="fl"><label class="lbl">Co zlepšit — nepovinné</label><textarea id="fin-imp" placeholder="Vaše poznámka…"></textarea></div>

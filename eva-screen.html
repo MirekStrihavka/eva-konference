@@ -165,7 +165,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;background:rad
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getDatabase, ref, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyC_NncsDb11L1Rawkc9fvAqZUjsG6jmNL4",
@@ -233,11 +233,23 @@ onValue(ref(db,'command'), snap=>{
   if(!snap.exists()) return;
   const cmd=snap.val();
   if(!cmd||!cmd.action) return;
+
   if(cmd.action==='show_questions'){
+    // Zobraz otázky jen pokud není aktivní blok
+    const sb=sortedBlocks();
+    const cur=sb.find(b=>b.status==='open'||b.status==='live');
+    if(cur){
+      // Aktivní blok má přednost — ignoruj příkaz a smaž ho
+      remove(ref(db,'command'));
+      return;
+    }
     renderQuestionsMode(cmd.blockId, cmd.mode);
     showMode('questions');
+    // Nesmazávej příkaz — ale uložíme timestamp kdy byl zpracován
+    // Smazat příkaz po 30 minutách = admin musí znovu kliknout
   }
   if(cmd.action==='show_final'||cmd.action==='back_to_lobby'){
+    remove(ref(db,'command'));
     showMode('lobby');
     updateScreen();
   }
@@ -265,7 +277,11 @@ function updateScreen(){
     document.getElementById('live-time').textContent=cur.start&&cur.end?cur.start+' – '+cur.end:cur.start||'';
     document.getElementById('bar-status').textContent='● '+cur.title;
     updateLiveRatings();
-    if(currentMode!=='live') showMode('live');
+    if(currentMode!=='live'){
+      showMode('live');
+      // Smaž command aby se otázky nevracely po refresh
+      remove(ref(db,'command'));
+    }
   } else if(currentMode!=='questions'){
     // Lobby mode — jen pokud nejsme v questions
     if(next){
@@ -315,7 +331,6 @@ function renderQuestionsMode(blockId, mode){
     <div class="q-card">
       <div class="q-card-block">${q.blockTitle||''}</div>
       <div class="q-card-text">${esc(q.text)}</div>
-      <div class="q-card-author">— ${esc(q.author||'')}</div>
     </div>`).join('');
   document.getElementById('bar-status').textContent='Otázky · '+(qsArr.length)+' schválených';
 }
