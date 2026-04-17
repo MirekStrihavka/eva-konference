@@ -216,6 +216,7 @@ function goTab(tab){
   document.getElementById("v-prog").style.display=tab==="prog"?"block":"none";
   document.getElementById("v-rate").style.display=tab==="rate"?"block":"none";
   if(tab==="rate") renderRating();
+  if(tab==="prog") renderBlocks();
 }
 window.goTab=goTab;
 
@@ -406,7 +407,7 @@ onValue(ref(db,"command"),snap=>{
       const qs=Object.values(all).filter(q=>q.status==="approved"&&(cmd.mode==="all"||q.blockId===cmd.blockId));
       document.getElementById("qs-title").textContent=cmd.mode==="all"?"Otázky z celé konference":"Otázky";
       const el=document.getElementById("qs-list");
-      el.innerHTML=qs.length?qs.map(q=>`<div class="qs-card"><div class="qs-blk">${esc(q.blockTitle)} · ${q.time||""}</div><div class="qs-txt">${esc(q.text)}</div><div class="qs-auth">— ${esc(q.author||"")}</div></div>`).join(""):"<div class=\"empty\">Žádné schválené otázky.</div>";
+      el.innerHTML=qs.length?qs.map(q=>`<div class="qs-card"><div class="qs-blk">${esc(q.blockTitle)} · ${q.time||""}</div><div class="qs-txt">${esc(q.text)}</div></div>`).join(""):"<div class=\"empty\">Žádné schválené otázky.</div>";
       show("s-qs");
     });
   }
