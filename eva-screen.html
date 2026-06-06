@@ -318,7 +318,7 @@ function renderQuestionsMode(blockId, mode){
   const useMode = mode!==undefined ? mode : _qMode;
   const qsArr=Object.values(questions).filter(q=>{
     if(q.status!=='approved') return false;
-    if(!q.shown) return false;
+    if(q.answered) return false;
     if(useMode==='block'&&useBlockId) return q.blockId===useBlockId;
     return true;
   });
@@ -332,15 +332,15 @@ function renderQuestionsMode(blockId, mode){
     document.getElementById('bar-status').textContent='Otázky';
     return;
   }
-  // Show max 4 questions at a time for readability
-  const show=qsArr.slice(0,4);
+  // Show max 3 questions at a time for readability
+  const show=qsArr.slice(0,3);
   el.innerHTML=show.map(q=>`
-    <div class="q-card" style="${q.answered?'opacity:.4':''}">
-      <div class="q-card-block">${q.blockTitle||''} ${q.answered?'· ✓ zodpovězeno':''}</div>
+    <div class="q-card">
+      <div class="q-card-block">${q.blockTitle||''}</div>
       <div class="q-card-text">${esc(q.text)}</div>
       <div class="q-card-author">— ${esc(q.author||'')}</div>
     </div>`).join('');
-  document.getElementById('bar-status').textContent='Otázky · '+(qsArr.length)+' na plátně';
+  document.getElementById('bar-status').textContent='Otázky · '+(qsArr.length)+' k zobrazení';
 }
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
