@@ -192,8 +192,8 @@ function makeQR(elId, size){
   if(!el||el.children.length) return;
   new QRCode(el,{text:PLAYER_URL,width:size,height:size,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.H});
 }
-makeQR('qr-lobby', 180);
-makeQR('qr-live', 120);
+makeQR('qr-lobby', 140);
+makeQR('qr-live', 90);
 
 // ── CLOCK ──
 function updateClock(){
@@ -331,6 +331,7 @@ function renderQuestionsMode(blockId, mode){
     <div class="q-card">
       <div class="q-card-block">${q.blockTitle||''}</div>
       <div class="q-card-text">${esc(q.text)}</div>
+      <div class="q-card-author">— ${esc(q.author||'')}</div>
     </div>`).join('');
   document.getElementById('bar-status').textContent='Otázky · '+(qsArr.length)+' schválených';
 }

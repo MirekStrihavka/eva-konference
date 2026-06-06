@@ -194,8 +194,8 @@ select option{background:#1a1a2e}
     <button class="btn btn-success btn-full" onclick="cmdShowFinal()">Spustit závěrečný formulář na telefonech →</button>
     <div class="divider"></div>
     <div style="font-weight:500;font-size:.88rem;margin-bottom:6px;color:var(--danger)">Reset dat</div>
-    <div style="font-size:.78rem;color:var(--muted);margin-bottom:8px">Smaže program, hodnocení, otázky. Leady zůstanou.</div>
-    <button class="btn btn-danger" onclick="resetAll()">Smazat program a hodnocení</button>
+    <div style="font-size:.78rem;color:var(--muted);margin-bottom:8px">Smaže vše — program, hodnocení, otázky i leady.</div>
+    <button class="btn btn-danger" onclick="resetAll()">Smazat vše</button>
   </div>
 </div>
 
@@ -500,12 +500,14 @@ window.saveSettings=()=>{
 
 // ── RESET ──
 window.resetAll=()=>{
-  if(!confirm('Smazat program, hodnocení a otázky?')) return;
+  if(!confirm('Smazat vše — program, hodnocení, otázky i leady? Tato akce je nevratná.')) return;
   set(ref(db,'blocks'),null);
   set(ref(db,'responses'),null);
   set(ref(db,'questions'),null);
+  set(ref(db,'leads'),null);
+  set(ref(db,'final_surveys'),null);
   set(ref(db,'command'),null);
-  toast('✓ Smazáno');
+  toast('✓ Vše smazáno');
 };
 
 // ── EXPORT ──
