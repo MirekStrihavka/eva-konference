@@ -318,10 +318,11 @@ function renderQuestionsMode(blockId, mode){
   const useMode = mode!==undefined ? mode : _qMode;
   const qsArr=Object.values(questions).filter(q=>{
     if(q.status!=='approved') return false;
-    if(q.answered) return false;
+    if(!q.shown) return false;
     if(useMode==='block'&&useBlockId) return q.blockId===useBlockId;
     return true;
   });
+  console.log('[EVA Screen] Otázky k zobrazení:', qsArr.length, qsArr.map(q=>({text:q.text, shown:q.shown, blockId:q.blockId})));
   const sb=sortedBlocks();
   const block=useBlockId?sb.find(b=>b.id===useBlockId):null;
   document.getElementById('q-headline').textContent=useMode==='all'?'Otázky z celé konference':'Otázky pro diskuzi';
@@ -332,15 +333,15 @@ function renderQuestionsMode(blockId, mode){
     document.getElementById('bar-status').textContent='Otázky';
     return;
   }
-  // Show max 3 questions at a time for readability
-  const show=qsArr.slice(0,3);
+  // Show max 4 questions at a time for readability
+  const show=qsArr.slice(0,4);
   el.innerHTML=show.map(q=>`
-    <div class="q-card">
-      <div class="q-card-block">${q.blockTitle||''}</div>
-      <div class="q-card-text">${esc(q.text)}</div>
+    <div class="q-card" style="${q.answered?'opacity:.4':''}">
+      <div class="q-card-block">${esc(q.blockTitle||'')} ${q.answered?'· ✓ zodpovězeno':''}</div>
+      <div class="q-card-text" style="color:#eeeef5">${esc(q.text||'(prázdná otázka)')}</div>
       <div class="q-card-author">— ${esc(q.author||'')}</div>
     </div>`).join('');
-  document.getElementById('bar-status').textContent='Otázky · '+(qsArr.length)+' k zobrazení';
+  document.getElementById('bar-status').textContent='Otázky · '+(qsArr.length)+' na plátně';
 }
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }

@@ -416,17 +416,19 @@ function renderBlockQuestions(blockId){
     </div>`;
 }
 window.toggleAnswered=(id,val)=>update(ref(db,'questions/'+id),{answered:val});
-window.toggleShown=(id,val)=>update(ref(db,'questions/'+id),{shown:val,answered:val?false:undefined});
+window.toggleShown=(id,val)=>{
+  const upd={shown:val};
+  if(val) upd.answered=false;
+  update(ref(db,'questions/'+id),upd);
+};
 window.showSelectedQs=(blockId)=>{
   const checks=[...document.querySelectorAll('.q-check:checked')];
   if(!checks.length){ toast('Zaškrtněte alespoň jednu otázku'); return; }
-  const updates={};
-  checks.forEach(c=>{ updates['questions/'+c.dataset.id+'/shown']=true; });
-  update(ref(db),updates).then(()=>{
-    // Pošli command aby SCREEN/PLAYER přepnuly na otázky
+  const promises=checks.map(c=>update(ref(db,'questions/'+c.dataset.id),{shown:true,answered:false}));
+  Promise.all(promises).then(()=>{
     set(ref(db,'command'),{action:'show_questions',blockId,mode:'block',ts:Date.now()});
     toast(`✓ Zobrazeno ${checks.length} otázek`);
-  });
+  }).catch(err=>{ toast('❌ '+err.message); console.error(err); });
 };
 
 window.saveBlock=(id)=>{
@@ -536,10 +538,10 @@ window.renderQuestions=()=>{
   }).join('');
 };
 window.showSingleQ=(id,blockId)=>{
-  update(ref(db,'questions/'+id),{shown:true}).then(()=>{
+  update(ref(db,'questions/'+id),{shown:true,answered:false}).then(()=>{
     set(ref(db,'command'),{action:'show_questions',blockId,mode:'block',ts:Date.now()});
     toast('✓ Zobrazeno na plátně');
-  });
+  }).catch(err=>{ toast('❌ '+err.message); console.error(err); });
 };
 
 window.setQStatus=(id,status)=>update(ref(db,'questions/'+id),{status});
