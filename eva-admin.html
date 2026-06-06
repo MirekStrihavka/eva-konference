@@ -386,29 +386,48 @@ function renderBlockQuestions(blockId){
     el.innerHTML=`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px"><div style="font-size:.72rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:6px">Otázky k tomuto bloku</div><div style="font-size:.82rem;color:var(--muted)">Zatím žádné otázky.</div></div>`;
     return;
   }
-  const approved=qs.filter(q=>q.status==='approved'&&!q.answered);
+  const selectable=qs.filter(q=>q.status==='approved'&&!q.shown);
   el.innerHTML=`
     <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:14px;margin-bottom:14px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
         <div style="font-size:.72rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold)">Otázky k tomuto bloku (${qs.length})</div>
-        <button class="btn btn-sm btn-primary" onclick="cmdShowQBlock('${blockId}')" ${approved.length?'':'disabled'}>Zobrazit schválené (${approved.length}) →</button>
+        <button class="btn btn-sm btn-primary" onclick="showSelectedQs('${blockId}')" ${selectable.length?'':'disabled'}>Zobrazit zaškrtnuté →</button>
       </div>
       ${qs.map(q=>{
-        const answered=q.answered;
+        const answered=q.answered, shown=q.shown;
         const badge=q.status==='new'?`<span class="badge badge-new">Nová</span>`:q.status==='approved'?`<span class="badge badge-approved">Schválena</span>`:`<span class="badge" style="background:rgba(224,85,85,.1);color:var(--danger);border:1px solid rgba(224,85,85,.25)">Zamítnuta</span>`;
-        const ansBadge=answered?`<span class="badge" style="background:var(--bg3);color:var(--muted);border:1px solid var(--border)">✓ Zodpovězena</span>`:'';
-        const approveBtn=(q.status!=='approved'&&!answered)?`<button class="btn btn-sm btn-success" onclick="setQStatus('${q.id}','approved')">Schválit</button>`:'';
-        const rejectBtn=(q.status!=='rejected'&&!answered)?`<button class="btn btn-sm btn-danger" onclick="setQStatus('${q.id}','rejected')">Zamítnout</button>`:'';
-        const ansBtn=(q.status==='approved')?`<button class="btn btn-sm btn-outline" onclick="toggleAnswered('${q.id}',${answered?'false':'true'})">${answered?'Vrátit':'Zodpovězeno ✓'}</button>`:'';
-        return `<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:7px;${answered?'opacity:.5':''}">
-          <div style="font-size:.86rem;color:var(--text);margin-bottom:6px;${answered?'text-decoration:line-through':''}">${esc(q.text)}</div>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.7rem;color:var(--muted);margin-bottom:6px"><span>${q.time||''}</span><span>— ${esc(q.author||'')}</span>${badge}${ansBadge}</div>
-          <div style="display:flex;gap:5px;flex-wrap:wrap">${approveBtn}${rejectBtn}${ansBtn}</div>
+        const shownBadge=shown?`<span class="badge" style="background:rgba(201,168,76,.18);color:var(--gold2);border:1px solid var(--gold2)">📺 Na plátně</span>`:'';
+        const ansBadge=answered?`<span class="badge" style="background:rgba(78,203,141,.15);color:var(--success);border:1px solid rgba(78,203,141,.3)">✓ Zodpovězena</span>`:'';
+        const checkbox=(q.status==='approved'&&!q.shown)?`<input type="checkbox" class="q-check" data-id="${q.id}" style="width:18px;height:18px;accent-color:var(--gold);cursor:pointer;margin-right:8px">`:'<span style="width:26px;display:inline-block"></span>';
+        const approveBtn=(q.status!=='approved')?`<button class="btn btn-sm btn-success" onclick="setQStatus('${q.id}','approved')">Schválit</button>`:'';
+        const rejectBtn=(q.status!=='rejected'&&!shown)?`<button class="btn btn-sm btn-danger" onclick="setQStatus('${q.id}','rejected')">Zamítnout</button>`:'';
+        const showBtn=(q.status==='approved'&&!q.shown)?`<button class="btn btn-sm btn-primary" onclick="toggleShown('${q.id}',true)">Zobrazit →</button>`:'';
+        const ansBtn=shown?`<button class="btn btn-sm ${answered?'btn-outline':'btn-success'}" onclick="toggleAnswered('${q.id}',${answered?'false':'true'})">${answered?'Vrátit':'✓ Zodpovězeno'}</button>`:'';
+        const hideBtn=shown?`<button class="btn btn-sm btn-outline" onclick="toggleShown('${q.id}',false)">Skrýt</button>`:'';
+        return `<div style="display:flex;align-items:flex-start;border:1px solid ${shown?'var(--gold2)':'var(--border)'};border-radius:8px;padding:10px 12px;margin-bottom:7px;${answered?'opacity:.55':''}">
+          ${checkbox}
+          <div style="flex:1">
+            <div style="font-size:.86rem;color:var(--text);margin-bottom:6px">${esc(q.text)}</div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.7rem;color:var(--muted);margin-bottom:6px"><span>${q.time||''}</span><span>— ${esc(q.author||'')}</span>${badge}${shownBadge}${ansBadge}</div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap">${approveBtn}${showBtn}${ansBtn}${hideBtn}${rejectBtn}</div>
+          </div>
         </div>`;
       }).join('')}
     </div>`;
 }
 window.toggleAnswered=(id,val)=>update(ref(db,'questions/'+id),{answered:val});
+window.toggleShown=(id,val)=>update(ref(db,'questions/'+id),{shown:val,answered:val?false:undefined});
+window.showSelectedQs=(blockId)=>{
+  const checks=[...document.querySelectorAll('.q-check:checked')];
+  if(!checks.length){ toast('Zaškrtněte alespoň jednu otázku'); return; }
+  const updates={};
+  checks.forEach(c=>{ updates['questions/'+c.dataset.id+'/shown']=true; });
+  update(ref(db),updates).then(()=>{
+    // Pošli command aby SCREEN/PLAYER přepnuly na otázky
+    set(ref(db,'command'),{action:'show_questions',blockId,mode:'block',ts:Date.now()});
+    toast(`✓ Zobrazeno ${checks.length} otázek`);
+  });
+};
 
 window.saveBlock=(id)=>{
   update(ref(db,'blocks/'+id),{
@@ -503,12 +522,24 @@ window.renderQuestions=()=>{
   const el=document.getElementById('q-list');
   if(!qsArr.length){ el.innerHTML='<div class="empty">Žádné otázky.</div>'; return; }
   el.innerHTML=qsArr.map(q=>{
+    const answered=q.answered, shown=q.shown;
     const badge=q.status==='new'?`<span class="badge badge-new">Nová</span>`:q.status==='approved'?`<span class="badge badge-approved">Schválena</span>`:`<span class="badge" style="background:rgba(224,85,85,.1);color:var(--danger);border:1px solid rgba(224,85,85,.25)">Zamítnuta</span>`;
+    const shownBadge=shown?`<span class="badge" style="background:rgba(201,168,76,.18);color:var(--gold2);border:1px solid var(--gold2)">📺 Na plátně</span>`:'';
+    const ansBadge=answered?`<span class="badge" style="background:rgba(78,203,141,.15);color:var(--success);border:1px solid rgba(78,203,141,.3)">✓ Zodpovězena</span>`:'';
     const approveBtn=q.status!=='approved'?`<button class="btn btn-sm btn-success" onclick="setQStatus('${q.id}','approved')">Schválit</button>`:'';
-    const rejectBtn=q.status!=='rejected'?`<button class="btn btn-sm btn-danger" onclick="setQStatus('${q.id}','rejected')">Zamítnout</button>`:'';
+    const rejectBtn=(q.status!=='rejected'&&!shown)?`<button class="btn btn-sm btn-danger" onclick="setQStatus('${q.id}','rejected')">Zamítnout</button>`:'';
     const resetBtn=q.status==='rejected'?`<button class="btn btn-sm btn-outline" onclick="setQStatus('${q.id}','new')">Vrátit</button>`:'';
-    return `<div class="q-item"><div class="q-text">${esc(q.text)}</div><div class="q-meta"><span>${esc(q.blockTitle)}</span><span>${q.time||''}</span><span>— ${esc(q.author||'')}</span>${badge}</div><div class="q-actions">${approveBtn}${rejectBtn}${resetBtn}<input type="text" placeholder="Interní poznámka…" value="${esc(q.note||'')}" style="flex:1;font-size:.76rem;padding:4px 8px" onchange="setQNote('${q.id}',this.value)"></div></div>`;
+    const showBtn=(q.status==='approved'&&!shown)?`<button class="btn btn-sm btn-primary" onclick="showSingleQ('${q.id}','${q.blockId}')">Zobrazit →</button>`:'';
+    const ansBtn=shown?`<button class="btn btn-sm ${answered?'btn-outline':'btn-success'}" onclick="toggleAnswered('${q.id}',${answered?'false':'true'})">${answered?'Vrátit':'✓ Zodpovězeno'}</button>`:'';
+    const hideBtn=shown?`<button class="btn btn-sm btn-outline" onclick="toggleShown('${q.id}',false)">Skrýt</button>`:'';
+    return `<div class="q-item" style="${answered?'opacity:.6':''}${shown?';border-color:var(--gold2)':''}"><div class="q-text">${esc(q.text)}</div><div class="q-meta"><span>${esc(q.blockTitle)}</span><span>${q.time||''}</span><span>— ${esc(q.author||'')}</span>${badge}${shownBadge}${ansBadge}</div><div class="q-actions">${approveBtn}${showBtn}${ansBtn}${hideBtn}${rejectBtn}${resetBtn}<input type="text" placeholder="Interní poznámka…" value="${esc(q.note||'')}" style="flex:1;font-size:.76rem;padding:4px 8px" onchange="setQNote('${q.id}',this.value)"></div></div>`;
   }).join('');
+};
+window.showSingleQ=(id,blockId)=>{
+  update(ref(db,'questions/'+id),{shown:true}).then(()=>{
+    set(ref(db,'command'),{action:'show_questions',blockId,mode:'block',ts:Date.now()});
+    toast('✓ Zobrazeno na plátně');
+  });
 };
 
 window.setQStatus=(id,status)=>update(ref(db,'questions/'+id),{status});

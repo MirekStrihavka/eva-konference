@@ -414,13 +414,13 @@ function renderPlayerQuestions(){
   if(!_qsCmd) return;
   const qs=Object.values(allQuestions).filter(q=>{
     if(q.status!=="approved") return false;
-    if(q.answered) return false;
+    if(!q.shown) return false;
     if(_qsCmd.mode==="all") return true;
     return q.blockId===_qsCmd.blockId;
   });
   document.getElementById("qs-title").textContent=_qsCmd.mode==="all"?"Otázky z celé konference":"Otázky";
   const el=document.getElementById("qs-list");
-  el.innerHTML=qs.length?qs.map(q=>`<div class="qs-card"><div class="qs-blk">${esc(q.blockTitle)} · ${q.time||""}</div><div class="qs-txt">${esc(q.text)}</div><div class="qs-auth">— ${esc(q.author||"")}</div></div>`).join(""):"<div class=\"empty\">Žádné otázky k zobrazení.</div>";
+  el.innerHTML=qs.length?qs.map(q=>`<div class="qs-card" style="${q.answered?'opacity:.4':''}"><div class="qs-blk">${esc(q.blockTitle)} · ${q.time||""}${q.answered?' · ✓ zodpovězeno':''}</div><div class="qs-txt">${esc(q.text)}</div><div class="qs-auth">— ${esc(q.author||"")}</div></div>`).join(""):"<div class=\"empty\">Žádné otázky k zobrazení.</div>";
 }
 
 // Sledování otázek živě
