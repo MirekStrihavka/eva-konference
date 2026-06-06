@@ -501,13 +501,10 @@ window.saveSettings=()=>{
 // ── RESET ──
 window.resetAll=()=>{
   if(!confirm('Smazat vše — program, hodnocení, otázky i leady? Tato akce je nevratná.')) return;
-  set(ref(db,'blocks'),null);
-  set(ref(db,'responses'),null);
-  set(ref(db,'questions'),null);
-  set(ref(db,'leads'),null);
-  set(ref(db,'final_surveys'),null);
-  set(ref(db,'command'),null);
-  toast('✓ Vše smazáno');
+  const targets = ['blocks','responses','questions','leads','final_surveys','command'];
+  Promise.all(targets.map(t => remove(ref(db, t))))
+    .then(()=>{ toast('✓ Vše smazáno'); })
+    .catch(err=>{ toast('❌ Chyba: '+err.message); console.error(err); });
 };
 
 // ── EXPORT ──
