@@ -529,7 +529,7 @@ window.exportData=()=>{
   <div style="font-family:'Cormorant Garamond',serif;font-size:1.4rem;font-weight:600;color:var(--gold2)">Admin přístup</div>
   <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:28px 28px;width:320px;display:flex;flex-direction:column;gap:12px">
     <div style="font-size:.68rem;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)">Heslo</div>
-    <input type="password" id="pwd-input" placeholder="Zadejte heslo…" style="width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:'Jost',sans-serif;font-size:1rem;padding:11px 14px;outline:none;text-align:center;letter-spacing:3px" id="pwd-input-field" onkeydown="if(event.key==='Enter')checkPwd()">
+    <input type="password" id="pwd-input" placeholder="Zadejte heslo…" style="width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:'Jost',sans-serif;font-size:1rem;padding:11px 14px;outline:none;text-align:center;letter-spacing:3px" onkeydown="if(event.key==='Enter')checkPwd()">
     <div id="pwd-err" style="font-size:.78rem;color:var(--danger);text-align:center;display:none">Nesprávné heslo</div>
     <button onclick="checkPwd()" style="width:100%;padding:12px;background:linear-gradient(135deg,var(--gold),var(--gold2));border:none;border-radius:9px;font-family:'Jost',sans-serif;font-size:.95rem;font-weight:600;color:var(--bg);cursor:pointer">Vstoupit →</button>
   </div>
