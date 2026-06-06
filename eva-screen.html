@@ -310,19 +310,26 @@ function updateLiveRatings(){
   document.getElementById('live-rating-names').innerHTML=names;
 }
 
+let _qMode=null, _qBlockId=null;
 function renderQuestionsMode(blockId, mode){
+  if(blockId!==undefined) _qBlockId=blockId;
+  if(mode!==undefined) _qMode=mode;
+  const useBlockId = blockId!==undefined ? blockId : _qBlockId;
+  const useMode = mode!==undefined ? mode : _qMode;
   const qsArr=Object.values(questions).filter(q=>{
     if(q.status!=='approved') return false;
-    if(mode==='block'&&blockId) return q.blockId===blockId;
+    if(q.answered) return false;
+    if(useMode==='block'&&useBlockId) return q.blockId===useBlockId;
     return true;
   });
   const sb=sortedBlocks();
-  const block=blockId?sb.find(b=>b.id===blockId):null;
-  document.getElementById('q-headline').textContent=mode==='all'?'Otázky z celé konference':'Otázky pro diskuzi';
+  const block=useBlockId?sb.find(b=>b.id===useBlockId):null;
+  document.getElementById('q-headline').textContent=useMode==='all'?'Otázky z celé konference':'Otázky pro diskuzi';
   document.getElementById('q-block-name').textContent=block?block.title:'';
   const el=document.getElementById('q-list');
   if(!qsArr.length){
-    el.innerHTML=`<div style="text-align:center;color:var(--muted);font-size:1.2rem">Žádné schválené otázky.</div>`;
+    el.innerHTML=`<div style="text-align:center;color:var(--muted);font-size:1.2rem">Žádné otázky k zobrazení.</div>`;
+    document.getElementById('bar-status').textContent='Otázky';
     return;
   }
   // Show max 3 questions at a time for readability
@@ -333,7 +340,7 @@ function renderQuestionsMode(blockId, mode){
       <div class="q-card-text">${esc(q.text)}</div>
       <div class="q-card-author">— ${esc(q.author||'')}</div>
     </div>`).join('');
-  document.getElementById('bar-status').textContent='Otázky · '+(qsArr.length)+' schválených';
+  document.getElementById('bar-status').textContent='Otázky · '+(qsArr.length)+' k zobrazení';
 }
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }

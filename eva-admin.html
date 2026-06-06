@@ -240,7 +240,7 @@ window.showTab=(name,el)=>{
 // Firebase listeners
 onValue(ref(db,'blocks'), snap=>{ blocks=snap.val()||{}; renderProgList(); renderDashboard(); });
 onValue(ref(db,'responses'), snap=>{ responses=snap.val()||{}; renderDashboard(); });
-onValue(ref(db,'questions'), snap=>{ questions=snap.val()||{}; renderDashboard(); renderQuestions(); });
+onValue(ref(db,'questions'), snap=>{ questions=snap.val()||{}; renderDashboard(); renderQuestions(); if(selBlockId) renderBlockQuestions(selBlockId); });
 onValue(ref(db,'leads'), snap=>{ leads=snap.val()||{}; renderDashboard(); renderLeads(); });
 onValue(ref(db,'settings'), snap=>{ if(snap.exists()){ settings=snap.val(); document.getElementById('set-name').value=settings.name||''; document.getElementById('set-place').value=settings.place||''; document.getElementById('set-date').value=settings.date||''; document.getElementById('set-desc').value=settings.desc||''; }});
 
@@ -294,7 +294,7 @@ function renderDashboard(){
     const n=respsArr.filter(r=>r.blockId===b.id).length;
     const pct=Math.round(n/totalP*100);
     const isOpen=b.status==='open'||b.status==='live';
-    const isDone=b.status==='done';
+    const isDone=b.status==='done'||b.status==='questions';
     const col=isOpen?'var(--gold2)':isDone?'rgba(78,203,141,.7)':'rgba(255,255,255,.1)';
     const nameCol=isOpen?'color:var(--gold2)':isDone?'':'color:var(--muted)';
     const tag=isOpen?`<span style="font-size:.65rem;color:var(--gold2);font-weight:600">● otevřeno</span>`:isDone?`<span style="font-size:.65rem;color:var(--success)">${n} hod.</span>`:`<span style="font-size:.65rem;color:var(--muted)">čeká</span>`;
@@ -303,7 +303,7 @@ function renderDashboard(){
 
   // Participants
   const partEl=document.getElementById('dash-participants');
-  const doneBlocks=rated.filter(b=>b.status==='done'||b.status==='open'||b.status==='live');
+  const doneBlocks=rated.filter(b=>b.status==='done'||b.status==='open'||b.status==='live'||b.status==='questions');
   const partMap={};
   respsArr.forEach(r=>{ if(!partMap[r.participantId]) partMap[r.participantId]={name:r.participantName,rated:new Set()}; partMap[r.participantId].rated.add(r.blockId); });
   const entries=Object.entries(partMap);
@@ -331,7 +331,7 @@ function renderProgList(){
   const el=document.getElementById('prog-list');
   if(!sb.length){ el.innerHTML='<div class="empty" style="padding:16px">Žádné bloky.</div>'; return; }
   el.innerHTML=sb.map(b=>{
-    const badge={done:`<span class="badge badge-done">Hotovo</span>`,open:`<span class="badge badge-open">Otevřeno</span>`,live:`<span class="badge badge-live">Živě</span>`,next:`<span class="badge badge-next">Čeká</span>`}[b.status]||'';
+    const badge={done:`<span class="badge badge-done">Hotovo</span>`,open:`<span class="badge badge-open">Otevřeno</span>`,live:`<span class="badge badge-live">Živě</span>`,next:`<span class="badge badge-next">Čeká</span>`,questions:`<span class="badge" style="background:rgba(201,168,76,.18);color:var(--gold2);border:1px solid var(--gold2)">Otázky</span>`}[b.status]||'';
     return `<div class="prog-item ${selBlockId===b.id?'sel':''}" onclick="selectBlock('${b.id}')"><div class="pi-time">${b.start||''} – ${b.end||''} · ${b.type||''}</div><div class="pi-title">${esc(b.title)}</div>${b.speaker?`<div style="font-size:.7rem;color:var(--muted)">${esc(b.speaker)}</div>`:''}<div class="pi-status">${badge}</div></div>`;
   }).join('');
 }
@@ -351,6 +351,7 @@ window.selectBlock=(id)=>{
         <option value="live" ${b.status==='live'?'selected':''}>Právě běží</option>
         <option value="open" ${b.status==='open'?'selected':''}>Hodnocení otevřeno</option>
         <option value="done" ${b.status==='done'?'selected':''}>Uzavřeno</option>
+        <option value="questions" ${b.status==='questions'?'selected':''}>Otázky</option>
       </select>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
@@ -358,6 +359,7 @@ window.selectBlock=(id)=>{
       <div class="metric" style="padding:10px"><div class="metric-val" style="font-size:1.5rem">${respsArr.length?(respsArr.reduce((s,r)=>s+r.overall,0)/respsArr.length).toFixed(1):'–'}</div><div class="metric-lbl">Průměr</div></div>
       <div class="metric" style="padding:10px"><div class="metric-val" style="font-size:1.5rem;color:var(--success)">${respsArr.filter(r=>r.moreInfo).length}</div><div class="metric-lbl">Zájem o info</div></div>
     </div>
+    <div id="block-questions-section"></div>
     <div class="field"><label>Název</label><input type="text" id="e-title" value="${esc(b.title)}"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <div class="field"><label>Řečník</label><input type="text" id="e-speaker" value="${esc(b.speaker||'')}"></div>
@@ -372,9 +374,41 @@ window.selectBlock=(id)=>{
       <button class="btn btn-primary" style="flex:1" onclick="saveBlock('${id}')">Uložit</button>
       <button class="btn btn-danger" onclick="deleteBlock('${id}')">Smazat</button>
     </div>`;
+  renderBlockQuestions(id);
 };
 
-window.saveBlock=(id)=>{
+// ── BLOCK-SPECIFIC QUESTIONS (workflow po uzavření bloku) ──
+function renderBlockQuestions(blockId){
+  const el=document.getElementById('block-questions-section');
+  if(!el) return;
+  const qs=Object.entries(questions).map(([id,q])=>({...q,id})).filter(q=>q.blockId===blockId).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  if(!qs.length){
+    el.innerHTML=`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px"><div style="font-size:.72rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:6px">Otázky k tomuto bloku</div><div style="font-size:.82rem;color:var(--muted)">Zatím žádné otázky.</div></div>`;
+    return;
+  }
+  const approved=qs.filter(q=>q.status==='approved'&&!q.answered);
+  el.innerHTML=`
+    <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:14px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:.72rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold)">Otázky k tomuto bloku (${qs.length})</div>
+        <button class="btn btn-sm btn-primary" onclick="cmdShowQBlock('${blockId}')" ${approved.length?'':'disabled'}>Zobrazit schválené (${approved.length}) →</button>
+      </div>
+      ${qs.map(q=>{
+        const answered=q.answered;
+        const badge=q.status==='new'?`<span class="badge badge-new">Nová</span>`:q.status==='approved'?`<span class="badge badge-approved">Schválena</span>`:`<span class="badge" style="background:rgba(224,85,85,.1);color:var(--danger);border:1px solid rgba(224,85,85,.25)">Zamítnuta</span>`;
+        const ansBadge=answered?`<span class="badge" style="background:var(--bg3);color:var(--muted);border:1px solid var(--border)">✓ Zodpovězena</span>`:'';
+        const approveBtn=(q.status!=='approved'&&!answered)?`<button class="btn btn-sm btn-success" onclick="setQStatus('${q.id}','approved')">Schválit</button>`:'';
+        const rejectBtn=(q.status!=='rejected'&&!answered)?`<button class="btn btn-sm btn-danger" onclick="setQStatus('${q.id}','rejected')">Zamítnout</button>`:'';
+        const ansBtn=(q.status==='approved')?`<button class="btn btn-sm btn-outline" onclick="toggleAnswered('${q.id}',${answered?'false':'true'})">${answered?'Vrátit':'Zodpovězeno ✓'}</button>`:'';
+        return `<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:7px;${answered?'opacity:.5':''}">
+          <div style="font-size:.86rem;color:var(--text);margin-bottom:6px;${answered?'text-decoration:line-through':''}">${esc(q.text)}</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.7rem;color:var(--muted);margin-bottom:6px"><span>${q.time||''}</span><span>— ${esc(q.author||'')}</span>${badge}${ansBadge}</div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap">${approveBtn}${rejectBtn}${ansBtn}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+window.toggleAnswered=(id,val)=>update(ref(db,'questions/'+id),{answered:val});
   update(ref(db,'blocks/'+id),{
     title:document.getElementById('e-title').value.trim(),
     speaker:document.getElementById('e-speaker').value.trim(),

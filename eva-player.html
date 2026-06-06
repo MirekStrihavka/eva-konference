@@ -8,7 +8,7 @@
 <style>
 :root{--bg:#09090f;--bg2:#0e0e17;--bg3:#13131f;--bg4:#1a1a28;--gold:#c9a84c;--gold2:#e8c97a;--gold3:#f5e0a0;--border:rgba(201,168,76,.12);--border2:rgba(201,168,76,.25);--text:#eeeef5;--text2:#b8b8cc;--muted:#6a6a88;--danger:#e05555;--success:#4ecb8d;--r:10px}
 *{box-sizing:border-box;margin:0;padding:0}
-html{font-size:120%}html,body{height:100%;font-family:"Jost",sans-serif;background:var(--bg);color:var(--text)}
+html,body{height:100%;font-family:"Jost",sans-serif;background:var(--bg);color:var(--text)}
 body{display:flex;flex-direction:column}
 body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 60% 40% at 50% 20%,rgba(201,168,76,.07) 0%,transparent 65%)}
 .screen{display:none;flex-direction:column;flex:1;overflow:hidden;position:relative;z-index:1}
@@ -216,7 +216,6 @@ function goTab(tab){
   document.getElementById("v-prog").style.display=tab==="prog"?"block":"none";
   document.getElementById("v-rate").style.display=tab==="rate"?"block":"none";
   if(tab==="rate") renderRating();
-  if(tab==="prog") renderBlocks();
 }
 window.goTab=goTab;
 
@@ -247,8 +246,8 @@ function renderBlocks(){
     const isBreak=BREAKS.includes(b.type);
     const rated=P.rated&&P.rated[b.id];
     const isActive=b.status==="open"||b.status==="live";
-    const isDone=b.status==="done";
-    const badge={done:`<span class="badge b-done">Dokončeno</span>`,open:`<span class="badge b-open">● Hodnocení otevřeno</span>`,live:`<span class="badge b-live">● Právě běží</span>`,next:`<span class="badge b-next">Připravuje se</span>`}[b.status]||"";
+    const isDone=b.status==="done"||b.status==="questions";
+    const badge={done:`<span class="badge b-done">Dokončeno</span>`,open:`<span class="badge b-open">● Hodnocení otevřeno</span>`,live:`<span class="badge b-live">● Právě běží</span>`,next:`<span class="badge b-next">Připravuje se</span>`,questions:`<span class="badge b-done">Diskuze / otázky</span>`}[b.status]||"";
     const ratedBadge=rated?`<span class="badge b-done" style="margin-left:5px">✓ Hodnoceno</span>`:"";
     if(isBreak) return `<div class="bi" style="opacity:.4;border-style:dashed"><div class="bi-time">${b.start||""}${b.end?" – "+b.end:""} · ${b.type}</div><div class="bi-title" style="color:var(--muted)">${esc(b.title)}</div></div>`;
     const isProd=b.type==="produktová prezentace";
@@ -304,7 +303,7 @@ function renderRating(blockId){
     <div style="padding-top:12px;border-top:1px solid var(--border);margin-top:4px">
       <div class="sec-lbl">Investiční záměr</div>
       <div class="fl"><label class="lbl">Uvažuji o koupi</label><div class="stars" id="st-buy" data-v="0"></div></div>
-      <div class="fl"><label class="lbl">Kdy?</label><div class="chips" id="ch-when"><div class="chip" onclick="one(this,'ch-when')">Ihned</div><div class="chip" onclick="one(this,'ch-when')">Do 3 měsíců</div><div class="chip" onclick="one(this,'ch-when')">Do 6 měsíců</div><div class="chip" onclick="one(this,'ch-when')">Později</div></div></div>
+      <div class="fl"><label class="lbl">Kdy?</label><div class="chips" id="ch-when"><div class="chip" onclick="one(this,'ch-when')">Ihned</div><div class="chip" onclick="one(this,'ch-when')">Do 3 měsíců</div><div class="chip" onclick="one(this,'ch-when')">Do roka</div><div class="chip" onclick="one(this,'ch-when')">Zatím ne</div></div></div>
       <div class="fl"><label class="lbl">Objem (USDC) — nepovinné</label><input type="text" id="inp-usd" placeholder="Např. 5000"></div>
     </div>`:""}
     <div class="fl" style="margin-top:4px"><label class="lbl">Otázka / vzkaz pro řečníka — nepovinné</label><textarea id="inp-q" placeholder="Vaše otázka…"></textarea></div>
@@ -402,16 +401,33 @@ onValue(ref(db,"command"),snap=>{
   const cmd=snap.val();
   if(!cmd||!cmd.action) return;
   if(cmd.action==="show_questions"){
-    get(ref(db,"questions")).then(s=>{
-      const all=s.val()||{};
-      const qs=Object.values(all).filter(q=>q.status==="approved"&&(cmd.mode==="all"||q.blockId===cmd.blockId));
-      document.getElementById("qs-title").textContent=cmd.mode==="all"?"Otázky z celé konference":"Otázky";
-      const el=document.getElementById("qs-list");
-      el.innerHTML=qs.length?qs.map(q=>`<div class="qs-card"><div class="qs-blk">${esc(q.blockTitle)} · ${q.time||""}</div><div class="qs-txt">${esc(q.text)}</div></div>`).join(""):"<div class=\"empty\">Žádné schválené otázky.</div>";
-      show("s-qs");
-    });
+    _qsCmd={mode:cmd.mode, blockId:cmd.blockId};
+    renderPlayerQuestions();
+    show("s-qs");
   }
   if(cmd.action==="show_final") renderFinal();
+});
+
+// Live-update otázek na player obrazovce
+let _qsCmd=null;
+function renderPlayerQuestions(){
+  if(!_qsCmd) return;
+  const qs=Object.values(allQuestions).filter(q=>{
+    if(q.status!=="approved") return false;
+    if(q.answered) return false;
+    if(_qsCmd.mode==="all") return true;
+    return q.blockId===_qsCmd.blockId;
+  });
+  document.getElementById("qs-title").textContent=_qsCmd.mode==="all"?"Otázky z celé konference":"Otázky";
+  const el=document.getElementById("qs-list");
+  el.innerHTML=qs.length?qs.map(q=>`<div class="qs-card"><div class="qs-blk">${esc(q.blockTitle)} · ${q.time||""}</div><div class="qs-txt">${esc(q.text)}</div><div class="qs-auth">— ${esc(q.author||"")}</div></div>`).join(""):"<div class=\"empty\">Žádné otázky k zobrazení.</div>";
+}
+
+// Sledování otázek živě
+let allQuestions={};
+onValue(ref(db,"questions"),snap=>{
+  allQuestions=snap.val()||{};
+  if(document.getElementById("s-qs").classList.contains("on")) renderPlayerQuestions();
 });
 
 // ── FINAL FORM ──
@@ -440,10 +456,10 @@ function renderFinal(){
     </div>
     <div class="fl"><label class="lbl">Investiční horizont</label>
       <div class="chips" id="ch-hor">
-        <div class="chip" onclick="one(this,'ch-hor')">Ihned</div>
-        <div class="chip" onclick="one(this,'ch-hor')">Do 3 měsíců</div>
         <div class="chip" onclick="one(this,'ch-hor')">Do 6 měsíců</div>
-        <div class="chip" onclick="one(this,'ch-hor')">Později</div>
+        <div class="chip" onclick="one(this,'ch-hor')">6–12 měsíců</div>
+        <div class="chip" onclick="one(this,'ch-hor')">Příští rok+</div>
+        <div class="chip" onclick="one(this,'ch-hor')">Zatím jen sleduji</div>
       </div>
     </div>
     <div class="fl"><label class="lbl">Co zlepšit — nepovinné</label><textarea id="fin-imp" placeholder="Vaše poznámka…"></textarea></div>
