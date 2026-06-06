@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EVA Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 <style>
 :root{--bg:#09090f;--bg2:#0e0e17;--bg3:#13131f;--bg4:#1a1a28;--gold:#c9a84c;--gold2:#e8c97a;--border:rgba(201,168,76,.12);--border2:rgba(201,168,76,.25);--text:#eeeef5;--text2:#b8b8cc;--muted:#6a6a88;--danger:#e05555;--success:#4ecb8d;--r:8px}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -194,7 +194,7 @@ select option{background:#1a1a2e}
     <button class="btn btn-success btn-full" onclick="cmdShowFinal()">Spustit závěrečný formulář na telefonech →</button>
     <div class="divider"></div>
     <div style="font-weight:500;font-size:.88rem;margin-bottom:6px;color:var(--danger)">Reset dat</div>
-    <div style="font-size:.78rem;color:var(--muted);margin-bottom:8px">Smaže program, hodnocení, otázky a leady.</div>
+    <div style="font-size:.78rem;color:var(--muted);margin-bottom:8px">Smaže program, hodnocení, otázky. Leady zůstanou.</div>
     <button class="btn btn-danger" onclick="resetAll()">Smazat program a hodnocení</button>
   </div>
 </div>
@@ -424,7 +424,9 @@ window.createBlock=(order)=>{
 function excelTime(v){ if(typeof v==='number'&&v>0&&v<1){ const m=Math.round(v*1440); return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); } return String(v||'').trim(); }
 
 window.importXlsx=(e)=>{
+  if(typeof XLSX==='undefined'){ toast('❌ XLSX knihovna se nenačetla — obnovte stránku'); return; }
   const file=e.target.files[0]; if(!file) return;
+  toast('Načítám soubor…');
   const reader=new FileReader();
   reader.onload=ev=>{
     try{
@@ -433,20 +435,20 @@ window.importXlsx=(e)=>{
       else{ const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array'}); rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''}); }
       const VALID=['přednáška','produktová prezentace','rozhovor','panel','soutěž','ostatní','malá přestávka','velká přestávka','oběd'];
       const data=rows.filter(r=>r[0]!==''&&r[0]!==null&&!isNaN(Number(r[0]))&&String(r[1]||'').trim());
-      if(!data.length){ toast('Žádná data'); return; }
-      if(Object.keys(blocks).length&&!confirm(`Nahradit stávající program (${Object.keys(blocks).length} bloků)?`)) return;
-      // Delete existing blocks
+      if(!data.length){ toast('❌ Žádná data — zkontrolujte formát'); return; }
+      if(Object.keys(blocks).length&&!confirm(`Nahradit stávající program (${Object.keys(blocks).length} bloků) novými ${data.length} bloky?`)) return;
       set(ref(db,'blocks'),null).then(()=>{
-        data.forEach(r=>{
-          const newRef=push(ref(db,'blocks'));
+        const promises=data.map(r=>{
+          const nr=push(ref(db,'blocks'));
           const rawType=String(r[3]||'přednáška').trim().toLowerCase();
-          set(newRef,{order:parseInt(r[0])||1,title:String(r[1]).trim(),speaker:String(r[2]||'').trim(),type:VALID.includes(rawType)?rawType:'přednáška',start:excelTime(r[4]),end:excelTime(r[5]),desc:String(r[6]||'').trim(),status:'next'});
+          return set(nr,{order:parseInt(r[0])||1,title:String(r[1]).trim(),speaker:String(r[2]||'').trim(),type:VALID.includes(rawType)?rawType:'přednáška',start:excelTime(r[4]),end:excelTime(r[5]),desc:String(r[6]||'').trim(),status:'next'});
         });
-        toast(`✓ Nahráno ${data.length} bloků`);
+        Promise.all(promises).then(()=>toast(`✓ Nahráno ${data.length} bloků`)).catch(err=>toast('❌ Firebase chyba: '+err.message));
       });
-    }catch(err){ toast('Chyba při čtení'); console.error(err); }
+    }catch(err){ toast('❌ Chyba: '+err.message); console.error(err); }
     e.target.value='';
   };
+  reader.onerror=()=>toast('❌ Nepodařilo se přečíst soubor');
   reader.readAsArrayBuffer(file);
 };
 
@@ -498,13 +500,11 @@ window.saveSettings=()=>{
 
 // ── RESET ──
 window.resetAll=()=>{
-  if(!confirm('Smazat program, hodnocení, otázky a leady?')) return;
+  if(!confirm('Smazat program, hodnocení a otázky?')) return;
   set(ref(db,'blocks'),null);
   set(ref(db,'responses'),null);
   set(ref(db,'questions'),null);
   set(ref(db,'command'),null);
-  set(ref(db,'leads'),null);
-  set(ref(db,'final_surveys'),null);
   toast('✓ Smazáno');
 };
 
