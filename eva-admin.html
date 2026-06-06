@@ -409,6 +409,8 @@ function renderBlockQuestions(blockId){
     </div>`;
 }
 window.toggleAnswered=(id,val)=>update(ref(db,'questions/'+id),{answered:val});
+
+window.saveBlock=(id)=>{
   update(ref(db,'blocks/'+id),{
     title:document.getElementById('e-title').value.trim(),
     speaker:document.getElementById('e-speaker').value.trim(),
